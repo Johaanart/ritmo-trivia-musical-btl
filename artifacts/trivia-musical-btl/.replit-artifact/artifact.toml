@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Trivia Musical BTL"
+description = "Una experiencia web responsive de trivia musical para activaciones BTL, con preguntas de demostración, temporizador, puntaje y resultados, lista para incorporar audio real en una fase posterior."
+version = "1.0.0"
+id = "artifacts/trivia-musical-btl"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22942
+
+[services.development]
+run = "pnpm --filter @workspace/trivia-musical-btl run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trivia-musical-btl", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/trivia-musical-btl/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22942"
+BASE_PATH = "/"

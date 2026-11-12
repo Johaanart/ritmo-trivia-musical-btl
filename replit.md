@@ -1,44 +1,46 @@
-# [Project name]
+# Trivia Musical BTL
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Trivia musical web para activaciones BTL, con preguntas de demostración, melodías de prueba locales y una partida responsive.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/trivia-musical-btl run dev` — ejecutar la aplicación web
+- `pnpm --filter @workspace/trivia-musical-btl run typecheck` — comprobar tipos del artefacto
+- `pnpm --filter @workspace/trivia-musical-btl run build` — generar la versión de producción
+- Esta fase no requiere variables de entorno, API ni base de datos.
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- pnpm workspaces, React, Vite, JavaScript/JSX y CSS
+- La app usa estado local del navegador; no hay servicios externos en esta fase.
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/trivia-musical-btl/src/App.tsx` — inicio, juego, resultados y composición de pantallas.
+- `artifacts/trivia-musical-btl/src/components/` — opciones de respuesta y reproductor.
+- `artifacts/trivia-musical-btl/src/data/questions.js` — preguntas locales, respuestas y melodías de prueba.
+- `artifacts/trivia-musical-btl/src/hooks/useTriviaGame.js` — temporizador, puntuación y flujo de la partida.
+- `artifacts/trivia-musical-btl/src/index.css` — estilos responsive y tema visual.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- La lógica de la partida está separada de los componentes visuales.
+- Las melodías sintéticas sirven para probar el reproductor sin grabaciones protegidas ni enlaces externos.
+- `audioSrc` queda reservado para asociar archivos locales en una fase posterior.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Los participantes escuchan melodías de prueba, eligen entre cuatro respuestas, ven su puntaje y pueden iniciar otra partida.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Esta primera fase no debe incluir autenticación, base de datos, analítica ni despliegue.
+- No usar logotipos ni recursos protegidos de Spotify; no inventar enlaces de canciones.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Las muestras actuales son tonos sintetizados localmente, no grabaciones de canciones.
+- Para usar clips reales, asociar archivos locales con licencia confirmada mediante `audioSrc`.
 
 ## Pointers
 
