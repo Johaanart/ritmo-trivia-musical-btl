@@ -3,6 +3,7 @@ import { ArrowRight, Headphones, RotateCcw, Sparkles, Volume2 } from 'lucide-rea
 import { AnswerOption } from './components/AnswerOption';
 import { AudioDeck } from './components/AudioDeck';
 import { AuthDialog } from './components/AuthDialog';
+import { AnalyticsScreen } from './components/AnalyticsScreen';
 import { useAuth } from './hooks/useAuth';
 import { useTriviaGame } from './hooks/useTriviaGame';
 import type { TriviaGameState } from './hooks/useTriviaGame';
@@ -13,12 +14,18 @@ function BrandHeader({
   user,
   isLoading,
   isSubmitting,
+  activeView,
+  analyticsDisabled,
+  onSelectView,
   onOpenAuth,
   onSignOut,
 }: {
   user: ReturnType<typeof useAuth>['user'];
   isLoading: boolean;
   isSubmitting: boolean;
+  activeView: 'game' | 'analytics';
+  analyticsDisabled: boolean;
+  onSelectView: (view: 'game' | 'analytics') => void;
   onOpenAuth: () => void;
   onSignOut: () => void;
 }) {
@@ -33,6 +40,26 @@ function BrandHeader({
           <span className="brand-caption">Trivia musical</span>
         </span>
       </div>
+      <nav className="primary-nav" aria-label="Navegación principal">
+        <button
+          className={`primary-nav-link${activeView === 'game' ? ' is-active' : ''}`}
+          type="button"
+          aria-current={activeView === 'game' ? 'page' : undefined}
+          onClick={() => onSelectView('game')}
+        >
+          Jugar
+        </button>
+        <button
+          className={`primary-nav-link${activeView === 'analytics' ? ' is-active' : ''}`}
+          type="button"
+          aria-current={activeView === 'analytics' ? 'page' : undefined}
+          disabled={analyticsDisabled}
+          title={analyticsDisabled ? 'Termina la partida para abrir la analítica.' : undefined}
+          onClick={() => onSelectView('analytics')}
+        >
+          Analítica &amp; Ranking
+        </button>
+      </nav>
       <div className="topbar-actions">
         <span className="edition-pill"><span className="live-dot" /> Edición para jugar en vivo</span>
         {isLoading ? (
@@ -306,6 +333,7 @@ function App() {
   const auth = useAuth();
   const game = useTriviaGame();
   const [authOpen, setAuthOpen] = useState(false);
+  const [activeView, setActiveView] = useState<'game' | 'analytics'>('game');
 
   useEffect(() => {
     if (game.screen === 'results' && auth.user && game.saveStatus === 'idle') {
@@ -344,23 +372,32 @@ function App() {
         user={auth.user}
         isLoading={auth.isLoading}
         isSubmitting={auth.isSubmitting}
+        activeView={activeView}
+        analyticsDisabled={game.screen === 'game' || game.loadingTracks}
+        onSelectView={setActiveView}
         onOpenAuth={() => setAuthOpen(true)}
         onSignOut={() => { void auth.signOut().catch(() => undefined); }}
       />
       {auth.error && !authOpen && <div className="stage"><p className="app-notice is-error" role="alert">{auth.error}</p></div>}
       <div className="stage">
-        {game.screen === 'home' && (
-          <HomeScreen
-            onStart={game.startGame}
-            loadingTracks={game.loadingTracks}
-            trackError={game.trackError}
-            isGuest={!auth.user}
-            onOpenAuth={() => setAuthOpen(true)}
-          />
-        )}
-        {game.screen === 'game' && <GameScreen game={game} />}
-        {game.screen === 'results' && (
-          <ResultsScreen game={game} user={auth.user} onOpenAuth={() => setAuthOpen(true)} />
+        {activeView === 'analytics' ? (
+          <AnalyticsScreen user={auth.user} />
+        ) : (
+          <>
+            {game.screen === 'home' && (
+              <HomeScreen
+                onStart={game.startGame}
+                loadingTracks={game.loadingTracks}
+                trackError={game.trackError}
+                isGuest={!auth.user}
+                onOpenAuth={() => setAuthOpen(true)}
+              />
+            )}
+            {game.screen === 'game' && <GameScreen game={game} />}
+            {game.screen === 'results' && (
+              <ResultsScreen game={game} user={auth.user} onOpenAuth={() => setAuthOpen(true)} />
+            )}
+          </>
         )}
       </div>
       <Footer />
