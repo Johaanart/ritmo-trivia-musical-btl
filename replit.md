@@ -7,40 +7,41 @@ Trivia musical web para activaciones BTL, con preguntas de demostración, melod�
 - `pnpm --filter @workspace/trivia-musical-btl run dev` — ejecutar la aplicación web
 - `pnpm --filter @workspace/trivia-musical-btl run typecheck` — comprobar tipos del artefacto
 - `pnpm --filter @workspace/trivia-musical-btl run build` — generar la versión de producción
-- Esta fase no requiere variables de entorno, API ni base de datos.
+- Configurar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` para usar autenticación, canciones y persistencia.
 
 ## Stack
 
 - pnpm workspaces, React, Vite, JavaScript/JSX y CSS
-- La app usa estado local del navegador; no hay servicios externos en esta fase.
+- Supabase Auth mantiene la sesión; Supabase almacena pistas, partidas y respuestas.
 
 ## Where things live
 
 - `artifacts/trivia-musical-btl/src/App.tsx` — inicio, juego, resultados y composición de pantallas.
-- `artifacts/trivia-musical-btl/src/components/` — opciones de respuesta y reproductor.
-- `artifacts/trivia-musical-btl/src/data/questions.js` — preguntas locales, respuestas y melodías de prueba.
-- `artifacts/trivia-musical-btl/src/hooks/useTriviaGame.js` — temporizador, puntuación y flujo de la partida.
+- `artifacts/trivia-musical-btl/src/components/` — opciones, reproductor MP3 y formulario de autenticación.
+- `artifacts/trivia-musical-btl/src/lib/supabase.js` — cliente Supabase configurado con variables Vite.
+- `artifacts/trivia-musical-btl/src/lib/tracks.js` — carga aleatoria de pistas y opciones de respuesta.
+- `artifacts/trivia-musical-btl/src/hooks/useAuth.js` — sesión persistente y operaciones de autenticación.
+- `artifacts/trivia-musical-btl/src/hooks/useTriviaGame.js` — temporizador, puntuación, respuestas y guardado.
 - `artifacts/trivia-musical-btl/src/index.css` — estilos responsive y tema visual.
 
 ## Architecture decisions
 
 - La lógica de la partida está separada de los componentes visuales.
-- Las melodías sintéticas sirven para probar el reproductor sin grabaciones protegidas ni enlaces externos.
-- `audioSrc` queda reservado para asociar archivos locales en una fase posterior.
+- Las cuatro opciones se generan con títulos de canciones de la tabla `tracks`; el audio se reproduce desde `audio_url`.
+- Solo partidas iniciadas por usuarios autenticados se guardan en `games` y `game_answers`; el modo invitado sigue disponible.
 
 ## Product
 
-Los participantes escuchan melodías de prueba, eligen entre cuatro respuestas, ven su puntaje y pueden iniciar otra partida.
+Los participantes escuchan pistas MP3, eligen entre cuatro respuestas, ven su puntaje y pueden iniciar otra partida.
 
 ## User preferences
 
-- Esta primera fase no debe incluir autenticación, base de datos, analítica ni despliegue.
 - No usar logotipos ni recursos protegidos de Spotify; no inventar enlaces de canciones.
 
 ## Gotchas
 
-- Las muestras actuales son tonos sintetizados localmente, no grabaciones de canciones.
-- Para usar clips reales, asociar archivos locales con licencia confirmada mediante `audioSrc`.
+- `tracks` necesita al menos cinco filas con `id`, `title`, `audio_url` y audio accesible; `artist` puede estar vacío.
+- Las políticas RLS de Supabase deben permitir leer las pistas y escribir partidas y respuestas propias.
 
 ## Pointers
 

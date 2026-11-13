@@ -5,21 +5,16 @@ Aplicación web de trivia musical para activaciones BTL.
 ## Arquitectura
 
 - **Frontend:** React + Vite.
-- **Backend y datos:** Supabase (integración prevista; no está conectada en esta fase).
-- **Despliegue:** Vercel (destino previsto; no está configurado en esta fase).
+- **Autenticación y datos:** Supabase Auth y tablas `tracks`, `games` y `game_answers`.
+- **Despliegue:** Vercel.
 
-El prototipo actual usa preguntas y melodías de prueba locales. Las variables de ejemplo para una futura conexión con Supabase están en `.env.example`. Copia ese archivo a `.env.local` y completa los valores cuando la integración esté configurada. No compartas ni publiques valores reales.
+Para desarrollo local, copia `.env.example` a `.env.local` en la raíz y completa `VITE_SUPABASE_URL` (URL `https://` del proyecto) y `VITE_SUPABASE_ANON_KEY`. La tabla `tracks` debe exponer `id`, `title`, `artist` y `audio_url`; el cliente selecciona cinco pistas aleatorias y genera cuatro opciones por pista. Las tablas de partidas usan las columnas `games(user_id, score, correct_answers, total_questions, duration_seconds)` y `game_answers(game_id, track_id, selected_option, is_correct, response_time_ms)`. Configura las políticas RLS para que la app pueda leer pistas y cada usuario solo pueda insertar partidas propias y sus respuestas.
+
+El juego se puede jugar como invitado; solo las sesiones autenticadas guardan partidas y respuestas.
 
 ## Instalación y desarrollo
 
-Comandos solicitados para un proyecto administrado con npm:
-
-```bash
-npm install
-npm run dev
-```
-
-**Nota sobre este repositorio:** actualmente está configurado como un workspace de pnpm; npm está bloqueado por su configuración y el comando de desarrollo vive en el paquete de la aplicación. Para ejecutar esta copia:
+Este repositorio usa un workspace de pnpm. Para instalar dependencias y ejecutar la aplicación:
 
 ```bash
 pnpm install

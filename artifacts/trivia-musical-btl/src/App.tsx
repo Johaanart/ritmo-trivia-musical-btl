@@ -1,13 +1,29 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Headphones, RotateCcw, Sparkles, Volume2 } from 'lucide-react';
 import { AnswerOption } from './components/AnswerOption';
 import { AudioDeck } from './components/AudioDeck';
+import { AuthDialog } from './components/AuthDialog';
+import { useAuth } from './hooks/useAuth';
 import { useTriviaGame } from './hooks/useTriviaGame';
 import type { TriviaGameState } from './hooks/useTriviaGame';
 
 const letters = ['A', 'B', 'C', 'D'];
 
-function BrandHeader() {
+function BrandHeader({
+  user,
+  isLoading,
+  isSubmitting,
+  onOpenAuth,
+  onSignOut,
+}: {
+  user: ReturnType<typeof useAuth>['user'];
+  isLoading: boolean;
+  isSubmitting: boolean;
+  onOpenAuth: () => void;
+  onSignOut: () => void;
+}) {
+  const username = user?.user_metadata?.username || user?.email || '';
+
   return (
     <header className="topbar">
       <div className="brand" aria-label="Ritmo, trivia musical">
@@ -17,7 +33,23 @@ function BrandHeader() {
           <span className="brand-caption">Trivia musical</span>
         </span>
       </div>
-      <span className="edition-pill"><span className="live-dot" /> Edición para jugar en vivo</span>
+      <div className="topbar-actions">
+        <span className="edition-pill"><span className="live-dot" /> Edición para jugar en vivo</span>
+        {isLoading ? (
+          <span className="auth-user">Comprobando sesión…</span>
+        ) : user ? (
+          <div className="account-control">
+            <span className="auth-user" title={user.email ?? undefined}>{username}</span>
+            <button className="account-button" type="button" onClick={onSignOut} disabled={isSubmitting}>
+              Cerrar sesión
+            </button>
+          </div>
+        ) : (
+          <button className="account-button" type="button" onClick={onOpenAuth}>
+            Iniciar sesión
+          </button>
+        )}
+      </div>
     </header>
   );
 }
@@ -31,7 +63,19 @@ function Footer() {
   );
 }
 
-function HomeScreen({ onStart }: { onStart: () => void }) {
+function HomeScreen({
+  onStart,
+  loadingTracks,
+  trackError,
+  isGuest,
+  onOpenAuth,
+}: {
+  onStart: () => void;
+  loadingTracks: boolean;
+  trackError: string;
+  isGuest: boolean;
+  onOpenAuth: () => void;
+}) {
   return (
     <main className="screen">
       <div className="hero-grid">
@@ -46,9 +90,16 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
             <span className="instruction"><span className="instruction-number">02</span> Elige una de 4</span>
             <span className="instruction"><span className="instruction-number">03</span> Suma puntos</span>
           </div>
-          <button className="primary-button" type="button" onClick={onStart} data-testid="button-start-game">
-            Empezar partida <ArrowRight size={17} aria-hidden="true" />
+          <button className="primary-button" type="button" onClick={onStart} disabled={loadingTracks} data-testid="button-start-game">
+            {loadingTracks ? 'Cargando pistas…' : 'Empezar partida'}
+            {!loadingTracks && <ArrowRight size={17} aria-hidden="true" />}
           </button>
+          {trackError && <p className="app-notice is-error" role="alert">{trackError}</p>}
+          {isGuest && (
+            <p className="guest-note">
+              Puedes jugar como invitado. <button type="button" onClick={onOpenAuth}>Inicia sesión</button> para guardar tus puntajes.
+            </p>
+          )}
           <p className="hero-note">5 preguntas · 15 segundos por pista · Responde con A, B, C o D</p>
         </section>
         <aside className="visual-card" aria-label="Ilustración de una onda sonora">
@@ -67,14 +118,26 @@ function HomeScreen({ onStart }: { onStart: () => void }) {
 }
 
 function GameScreen({ game }: { game: TriviaGameState }) {
+  const [audioError, setAudioError] = useState('');
+  const question = game.question;
+  useEffect(() => setAudioError(''), [question?.id]);
+
+  if (!question) {
+    return <main className="screen"><p className="app-notice is-error" role="alert">No se encontró la pista de esta pregunta.</p></main>;
+  }
+
   const {
-    question, questionIndex, totalQuestions, score, secondsLeft, isPlaying,
-    selectedAnswer, answered, timedOut, chooseAnswer, togglePlayback, nextQuestion,
+    questionIndex, totalQuestions, score, secondsLeft, isPlaying,
+    selectedAnswer, answered, timedOut, chooseAnswer, togglePlayback, nextQuestion, stopPlayback,
   } = game;
   const correct = question.answer;
   const hasSelectedCorrect = selectedAnswer === correct;
   const percent = ((questionIndex + 1) / totalQuestions) * 100;
   const timerPercent = (secondsLeft / 15) * 100;
+  const handlePlaybackError = useCallback(() => {
+    setAudioError('No se pudo reproducir este archivo MP3. Comprueba que audio_url apunte a un archivo accesible.');
+    stopPlayback();
+  }, [stopPlayback]);
 
   return (
     <main className="screen game-screen">
@@ -99,11 +162,12 @@ function GameScreen({ game }: { game: TriviaGameState }) {
           <AudioDeck
             isPlaying={isPlaying}
             onToggle={togglePlayback}
-            onPlaybackComplete={game.stopPlayback}
+            onPlaybackComplete={stopPlayback}
+            onPlaybackError={handlePlaybackError}
             disabled={answered}
             audioSrc={question.audioSrc}
-            demoMelody={question.demoMelody}
           />
+          {audioError && <p className="app-notice is-error audio-error" role="alert">{audioError}</p>}
           <div className="timer-box" aria-live="off">
             <span className="timer-copy">Tiempo para responder</span>
             <span className={`timer-number${secondsLeft <= 5 ? ' is-low' : ''}`} data-testid="text-timer">
@@ -166,7 +230,15 @@ function GameScreen({ game }: { game: TriviaGameState }) {
   );
 }
 
-function ResultsScreen({ game }: { game: TriviaGameState }) {
+function ResultsScreen({
+  game,
+  user,
+  onOpenAuth,
+}: {
+  game: TriviaGameState;
+  user: ReturnType<typeof useAuth>['user'];
+  onOpenAuth: () => void;
+}) {
   const accuracy = Math.round((game.answersCorrect / game.totalQuestions) * 100);
   let title = 'El ritmo es tuyo.';
   let description = 'Tienes oído para esto. Una vuelta más y seguro reconoces hasta la última pista.';
@@ -204,13 +276,42 @@ function ResultsScreen({ game }: { game: TriviaGameState }) {
           </button>
           <span className="result-replay-hint"><Sparkles size={13} aria-hidden="true" /> El marcador vuelve a cero</span>
         </div>
+        <div className="result-save-status" aria-live="polite">
+          {user ? (
+            game.saveStatus === 'saved' ? (
+              <p className="app-notice" role="status">Tu partida y sus respuestas se guardaron en tu cuenta.</p>
+            ) : game.saveStatus === 'saving' || game.saveStatus === 'idle' ? (
+              <p className="app-notice" role="status">Guardando tu partida…</p>
+            ) : (
+              <div>
+                <p className="app-notice is-error" role="alert">{game.saveError}</p>
+                <button className="account-button" type="button" onClick={() => game.saveResult(user.id)}>
+                  Reintentar guardado
+                </button>
+              </div>
+            )
+          ) : (
+            <p className="app-notice">
+              Esta partida es de invitado y no se guardará.{' '}
+              <button className="inline-action" type="button" onClick={onOpenAuth}>Inicia sesión</button> para guardar tu puntaje.
+            </p>
+          )}
+        </div>
       </section>
     </main>
   );
 }
 
 function App() {
+  const auth = useAuth();
   const game = useTriviaGame();
+  const [authOpen, setAuthOpen] = useState(false);
+
+  useEffect(() => {
+    if (game.screen === 'results' && auth.user && game.saveStatus === 'idle') {
+      void game.saveResult(auth.user.id);
+    }
+  }, [auth.user, game.screen, game.runId, game.saveStatus, game.saveResult]);
 
   useEffect(() => {
     if (game.screen !== 'game' || game.answered) return undefined;
@@ -239,13 +340,38 @@ function App() {
 
   return (
     <div className="app-shell">
-      <BrandHeader />
+      <BrandHeader
+        user={auth.user}
+        isLoading={auth.isLoading}
+        isSubmitting={auth.isSubmitting}
+        onOpenAuth={() => setAuthOpen(true)}
+        onSignOut={() => { void auth.signOut().catch(() => undefined); }}
+      />
+      {auth.error && !authOpen && <div className="stage"><p className="app-notice is-error" role="alert">{auth.error}</p></div>}
       <div className="stage">
-        {game.screen === 'home' && <HomeScreen onStart={game.startGame} />}
+        {game.screen === 'home' && (
+          <HomeScreen
+            onStart={game.startGame}
+            loadingTracks={game.loadingTracks}
+            trackError={game.trackError}
+            isGuest={!auth.user}
+            onOpenAuth={() => setAuthOpen(true)}
+          />
+        )}
         {game.screen === 'game' && <GameScreen game={game} />}
-        {game.screen === 'results' && <ResultsScreen game={game} />}
+        {game.screen === 'results' && (
+          <ResultsScreen game={game} user={auth.user} onOpenAuth={() => setAuthOpen(true)} />
+        )}
       </div>
       <Footer />
+      {authOpen && (
+        <AuthDialog
+          isSubmitting={auth.isSubmitting}
+          signIn={auth.signIn}
+          signUp={auth.signUp}
+          onClose={() => setAuthOpen(false)}
+        />
+      )}
     </div>
   );
 }
